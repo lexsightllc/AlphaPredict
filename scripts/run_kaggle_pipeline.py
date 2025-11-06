@@ -91,8 +91,65 @@ def _run_pipeline(repo_root: Path) -> None:
     _run_command([sys.executable, str(scripts_dir / "backtest.py")], cwd=repo_root)
 
 
+def _is_repo_root(path: Path) -> bool:
+    """Return ``True`` if *path* appears to be the AlphaPredict repository root."""
+
+    return (path / "scripts" / "train.py").is_file() and (
+        path / "scripts" / "backtest.py"
+    ).is_file()
+
+
+def _determine_repo_root() -> Path:
+    """Best-effort detection of the repository root across Kaggle environments."""
+
+    candidates: list[Path] = []
+
+    env_hint = os.environ.get("ALPHAPREDICT_REPO_ROOT")
+    if env_hint:
+        candidates.append(Path(env_hint))
+
+    if "__file__" in globals():
+        candidates.append(Path(__file__).resolve().parents[1])
+
+    if sys.argv and sys.argv[0]:
+        argv_path = Path(sys.argv[0])
+        if argv_path.exists():
+            candidates.append(argv_path.resolve().parent)
+
+    cwd = Path.cwd()
+    search_roots = [cwd, *cwd.parents]
+    kaggle_roots = [KAGGLE_WORKING_ROOT, KAGGLE_CODE_ROOT]
+    search_roots.extend(kaggle_roots)
+
+    for root in search_roots:
+        candidates.append(root)
+        candidates.append(root / TARGET_REPO_NAME)
+
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+        except FileNotFoundError:
+            continue
+
+        if resolved in seen or not resolved.exists():
+            continue
+        seen.add(resolved)
+
+        if resolved.is_file():
+            resolved = resolved.parent
+
+        if _is_repo_root(resolved):
+            return resolved
+
+    raise PipelineError(
+        "Unable to locate the AlphaPredict repository root. Please run the script "
+        "from within or alongside the project directory."
+    )
+
+
 def main() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = _determine_repo_root()
 
     if os.environ.get(ENV_FLAG) != "1":
         working_repo = _copy_repo_to_working(repo_root)
