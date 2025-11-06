@@ -1,0 +1,42 @@
+paths:
+  data_root: data
+  external_data: data/External
+  processed_data: data/Processed
+  artifacts_root: artifacts
+  model_artifact: artifacts/models/final_model.pkl
+  scaler_artifact: artifacts/scalers/trained_scaler.pkl
+  feature_metadata: artifacts/metadata/feature_list.json
+  statistics_metadata: artifacts/metadata/training_statistics.json
+
+preprocessing:
+  lags: [1, 5, 21]
+  rolling_windows: [5, 21, 63]
+  winsor_limits:
+    lower: 0.01
+    upper: 0.99
+  imputation_strategy: median
+  scaler: standard
+
+training:
+  target: excess_return
+  validation_splits: 5
+  validation_gap: 5
+  max_train_days: null
+  random_seed: 42
+
+model:
+  type: elastic_net
+  params:
+    alpha: 0.5
+    l1_ratio: 0.5
+
+strategy:
+  leverage_min: 0.0
+  leverage_max: 2.0
+  turnover_penalty: 0.05
+  volatility_cap: 0.03
+
+serving:
+  max_batch_size: 1024
+  inference_timeout_ms: 50
+  feature_window_days: 21

@@ -1,0 +1,6 @@
+models/*.pkl
+scalers/*.pkl
+metadata/*.json
+!models/.gitkeep
+!scalers/.gitkeep
+!metadata/.gitkeep
