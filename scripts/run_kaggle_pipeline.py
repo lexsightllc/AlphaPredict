@@ -91,27 +91,64 @@ def _run_pipeline(repo_root: Path) -> None:
     _run_command([sys.executable, str(scripts_dir / "backtest.py")], cwd=repo_root)
 
 
-def _determine_repo_root() -> Path:
-    """Best-effort detection of the repository root.
+def _is_repo_root(path: Path) -> bool:
+    """Return ``True`` if ``path`` looks like the AlphaPredict repository root."""
 
-    When executed via ``python scripts/run_kaggle_pipeline.py`` the ``__file__``
-    attribute is available and we can simply climb two levels up. In some Kaggle
-    notebook contexts the script may instead be executed through ``exec`` where
-    ``__file__`` is undefined, so we fall back to probing the current working
-    directory and its parents for the expected layout.
-    """
+    if not path.is_dir():
+        return False
+
+    expected_entries = [
+        path / "scripts" / "run_kaggle_pipeline.py",
+        path / "scripts" / "train.py",
+        path / "scripts" / "backtest.py",
+        path / "pyproject.toml",
+    ]
+
+    return all(entry.exists() for entry in expected_entries)
+
+
+def _determine_repo_root() -> Path:
+    """Best-effort detection of the repository root across environments."""
+
+    candidates: list[Path] = []
 
     if "__file__" in globals():
-        return Path(__file__).resolve().parents[1]
+        candidates.append(Path(__file__).resolve().parents[1])
 
-    candidates = [Path.cwd(), *Path.cwd().parents]
+    if sys.argv and sys.argv[0]:
+        argv_path = Path(sys.argv[0])
+        if argv_path.exists():
+            candidates.append(argv_path.resolve().parent)
+
+    cwd = Path.cwd()
+    search_roots = [cwd, *cwd.parents]
+    kaggle_roots = [KAGGLE_WORKING_ROOT, KAGGLE_CODE_ROOT]
+    search_roots.extend(kaggle_roots)
+
+    for root in search_roots:
+        candidates.append(root)
+        candidates.append(root / TARGET_REPO_NAME)
+
+    seen: set[Path] = set()
     for candidate in candidates:
-        if (candidate / "scripts" / "train.py").is_file():
-            return candidate
+        try:
+            resolved = candidate.resolve()
+        except FileNotFoundError:
+            continue
+
+        if resolved in seen or not resolved.exists():
+            continue
+        seen.add(resolved)
+
+        if resolved.is_file():
+            resolved = resolved.parent
+
+        if _is_repo_root(resolved):
+            return resolved
 
     raise PipelineError(
         "Unable to locate the AlphaPredict repository root. Please run the script "
-        "from within the project directory."
+        "from within or alongside the project directory."
     )
 
 
