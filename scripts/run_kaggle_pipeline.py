@@ -91,8 +91,32 @@ def _run_pipeline(repo_root: Path) -> None:
     _run_command([sys.executable, str(scripts_dir / "backtest.py")], cwd=repo_root)
 
 
+def _determine_repo_root() -> Path:
+    """Best-effort detection of the repository root.
+
+    When executed via ``python scripts/run_kaggle_pipeline.py`` the ``__file__``
+    attribute is available and we can simply climb two levels up. In some Kaggle
+    notebook contexts the script may instead be executed through ``exec`` where
+    ``__file__`` is undefined, so we fall back to probing the current working
+    directory and its parents for the expected layout.
+    """
+
+    if "__file__" in globals():
+        return Path(__file__).resolve().parents[1]
+
+    candidates = [Path.cwd(), *Path.cwd().parents]
+    for candidate in candidates:
+        if (candidate / "scripts" / "train.py").is_file():
+            return candidate
+
+    raise PipelineError(
+        "Unable to locate the AlphaPredict repository root. Please run the script "
+        "from within the project directory."
+    )
+
+
 def main() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = _determine_repo_root()
 
     if os.environ.get(ENV_FLAG) != "1":
         working_repo = _copy_repo_to_working(repo_root)
