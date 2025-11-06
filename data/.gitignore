@@ -1,0 +1,4 @@
+External/*.csv
+Processed/*.parquet
+!External/.gitkeep
+!Processed/.gitkeep

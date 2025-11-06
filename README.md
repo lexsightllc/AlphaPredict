@@ -1,146 +1,106 @@
-# AlphaPredict: S&P 500 Tactical Forecasting System
+# AlphaPredict: Hull Tactical Market Prediction Pipeline
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+An opinionated end-to-end machine learning stack built to compete in Kaggle's [Hull Tactical Market Prediction](https://www.kaggle.com/competitions/hull-tactical-market-prediction) challenge. The system targets daily excess returns of the S&P 500 index using a curated blend of financial and macroeconomic indicators while respecting the competition's strict real-time inference and data leakage requirements.
 
-An end-to-end machine learning pipeline for predicting S&P 500 excess returns, designed for the Hull Tactical Market Prediction Kaggle competition. This project implements a robust system for tactical asset allocation using machine learning, with strict adherence to competition constraints including real-time inference requirements and prevention of data leakage.
+This repository serves as both the production code base and the accompanying research narrative. It is intentionally organized to balance experiment agility with the reproducibility demands of a regulated trading workflow.
 
-## 🌟 Features
+## 📚 Documentation Highlights
 
-- **End-to-End ML Pipeline**: Complete system from data ingestion to real-time predictions
-- **Advanced Feature Engineering**: Technical indicators, statistical features, and macroeconomic factors
-- **Multiple Model Architectures**: Support for gradient boosted trees, neural networks, and ensemble methods
-- **Robust Backtesting**: Comprehensive evaluation framework with walk-forward validation
-- **Production-Ready API**: High-performance inference endpoint with strict latency requirements
+The primary documentation lives in [`README.md`](README.md) and the rendered research manuscript [`reports/final_report.md`](reports/final_report.md). The README motivates the tactical allocation problem, revisits the Efficient Market Hypothesis, and discusses how disciplined feature engineering and validation can expose exploitable market structure under realistic volatility constraints.
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.9+
-- pip (Python package manager)
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/lexsightllc/AlphaPredict.git
-   cd AlphaPredict
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements-minimal.txt  # For basic functionality
-   # or
-   pip install -r requirements.txt  # For full feature set
-   ```
-
-## 🏗️ Project Structure
+## 🗂️ Project Layout
 
 ```
-AlphaPredict/
-├── config/               # Configuration files
-│   └── config.yaml      # Main configuration
-├── data/                 # Data storage
-│   ├── raw/             # Raw data files
-│   ├── processed/       # Processed datasets
-│   └── features/        # Feature sets
-├── notebooks/           # Jupyter notebooks for exploration
-├── models/              # Trained model artifacts
-├── reports/             # Analysis reports and visualizations
-└── src/                 # Source code
-    ├── data/           # Data loading and processing
-    ├── features/       # Feature engineering
-    ├── models/         # Model definitions
-    └── api/            # Inference API
+project_root/
+├── README.md
+├── data/
+│   ├── External/
+│   │   ├── train.csv
+│   │   └── test.csv
+│   └── Processed/
+│       ├── cleaned_train.parquet
+│       └── feature_matrix.parquet
+├── notebooks/
+│   ├── eda.ipynb
+│   ├── model_development.ipynb
+│   └── api_submission_template.ipynb
+├── src/
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── preprocessing.py
+│   ├── models.py
+│   ├── strategy.py
+│   ├── evaluation.py
+│   ├── serving.py
+│   └── utils.py
+├── reports/
+│   ├── figures/
+│   └── final_report.md
+├── scripts/
+│   ├── train.py
+│   ├── backtest.py
+│   └── api_stress_test.py
+├── artifacts/
+│   ├── models/final_model.pkl
+│   ├── scalers/trained_scaler.pkl
+│   └── metadata/
+│       ├── feature_list.json
+│       └── training_statistics.json
+└── config/settings.yaml
 ```
 
-## 🛠️ Usage
+> **Note:** Raw datasets and trained artifacts are excluded from version control. Populate the placeholders above by downloading Kaggle competition data or restoring artifacts from your secure storage.
 
-### Data Preparation
-```python
-from src.data.make_dataset import load_and_preprocess_data
+## 🔧 Core Modules
 
-# Load and preprocess data
-df = load_and_preprocess_data('data/raw/sp500_data.csv')
-```
+- **`src/config.py`** – Centralized configuration definitions. Exposes strongly typed data classes for file system paths, preprocessing parameters, validation schedules, and model hyperparameters. Utility helpers load YAML configurations from [`config/settings.yaml`](config/settings.yaml).
+- **`src/data_loader.py`** – Data access layer that loads training and inference datasets, enforces schemas, and constructs time-aware cross-validation folds.
+- **`src/preprocessing.py`** – Full preprocessing pipeline: missing value handling, winsorization, lag creation, rolling statistics, alignment to the competition's latency window, and feature scaling.
+- **`src/models.py`** – Model abstractions unifying gradient boosted trees, regularized linear models, deep tabular networks, and ensemble stacks under a shared `fit`/`predict` interface.
+- **`src/strategy.py`** – Maps model predictions to valid position sizes in `[0, 2]` while honoring leverage caps, turnover throttles, and execution realism.
+- **`src/evaluation.py`** – Implements the competition-specific Sharpe metric with volatility penalties plus custom diagnostics such as drawdown, hit rate, and tail-risk exposure.
+- **`src/serving.py`** – Production inference surface compatible with the competition's real-time API. Ensures no forward-looking leakage, handles request batching, and streams predictions within latency constraints.
+- **`src/utils.py`** – Shared utilities including seed management, structured logging, configuration validation, and instrumentation helpers.
 
-### Feature Engineering
-```python
-from src.features.build_features import create_feature_pipeline
+## 🧪 Workflow Overview
 
-# Create features
-features = create_feature_pipeline(df)
-```
+1. **Data Preparation** – Use `scripts/train.py` to load the external datasets, build lagged features with [`src/preprocessing.py`](src/preprocessing.py), and persist processed matrices to `data/Processed/`.
+2. **Model Development** – Experiment interactively inside [`notebooks/model_development.ipynb`](notebooks/model_development.ipynb). The notebook leverages the production preprocessing utilities to ensure parity between experiments and deployment.
+3. **Training & Backtesting** – Run `scripts/train.py` for production training. Validate robustness using `scripts/backtest.py`, which simulates execution frictions and drawdowns on out-of-sample periods.
+4. **Serving** – Package the trained model plus feature metadata into `artifacts/`. Use `scripts/api_stress_test.py` to assert that the [`src/serving.py`](src/serving.py) predict function satisfies latency limits under realistic loads.
 
-### Model Training
-```python
-from src.models.train import train_model
-
-# Train model
-model = train_model(X_train, y_train)
-```
-
-### Run Analysis
-```bash
-python run_analysis.py
-```
-
-### Start API Server
-```bash
-uvicorn src.api.main:app --reload
-```
-
-## 📊 Example Analysis
-
-Run the example analysis script to see the system in action:
+## 🚀 Getting Started
 
 ```bash
-python run_analysis.py
+# Create and activate environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .\.venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Train and evaluate
+python scripts/train.py
+python scripts/backtest.py
+
+# Launch local inference server
+uvicorn src.serving:app --host 0.0.0.0 --port 8000
 ```
 
-This will generate visualizations of:
-- Price with moving averages and Bollinger Bands
-- Relative Strength Index (RSI)
-- Trading signals and performance metrics
+## 📈 Interpretability & Reporting
+
+The pipeline logs experiment metadata and stores model explainability assets (feature importances, SHAP summaries, rolling Sharpe charts) under `reports/figures/`. The rendered [`reports/final_report.md`](reports/final_report.md) consolidates these insights into a narrative suitable for investment committees or compliance review.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. Fork the repository and create a feature branch.
+2. Run the formatting and linting checks defined in `pyproject.toml`.
+3. Submit a pull request describing the motivation, methodology, and validation for your contribution.
 
 ## 📄 License
 
-This project is licensed under the Mozilla Public License 2.0 (MPL-2.0) - see the [LICENSE](LICENSE) file for details.
+This project is released under the [Mozilla Public License 2.0](LICENSE). Please review the license before distributing derivative works.
 
-### Key Points About MPL-2.0:
-- You may use, copy, modify, and distribute the software under the terms of the MPL-2.0
-- Modifications to MPL-2.0 licensed files must be made available under the same license
-- You may combine this software with proprietary code in a larger work
-- The license includes a patent grant from contributors
+## 📬 Contact
 
-For the full license text, see [LICENSE](LICENSE).
-
-### Copyright
-
-Copyright © 2025 Augusto 'Guto' Ochoa Ughini. All rights reserved.
-
-## 📧 Contact
-
-For questions or feedback, please open an issue or contact the maintainers.
-
-## 📚 Resources
-
-- [Hull Tactical Market Prediction](https://www.kaggle.com/competitions/hull-tactical-market-prediction)
-- [pandas-ta Documentation](https://github.com/twopirllc/pandas-ta)
-- [LightGBM Documentation](https://lightgbm.readthedocs.io/)
+Questions, bug reports, or collaboration requests are welcome via GitHub Issues.
