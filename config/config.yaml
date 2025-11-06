@@ -1,0 +1,57 @@
+# Model Configuration
+model:
+  name: "lgbm"  # Options: lgbm, xgboost, catboost, nn
+  params:
+    num_leaves: 31
+    max_depth: -1
+    learning_rate: 0.05
+    n_estimators: 1000
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    random_state: 42
+
+# Feature Engineering
+features:
+  lookback_windows: [5, 10, 21, 63, 126, 252]  # Common trading day windows
+  volatility_windows: [5, 21, 63]  # Windows for volatility calculations
+  volume_windows: [5, 21]  # Windows for volume moving averages
+  rsi_windows: [14, 21]  # Windows for RSI calculation
+  macd_params:  # MACD parameters
+    fast_period: 12
+    slow_period: 26
+    signal_period: 9
+
+# Training
+training:
+  test_size: 0.2  # Proportion of data to use for testing
+  early_stopping_rounds: 50
+  eval_metric: "rmse"
+  cv_folds: 5
+  random_seed: 42
+
+# API
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: True
+  workers: 4
+  log_level: "info"
+
+# Data Paths
+paths:
+  raw_data: "data/raw/sp500_data.csv"
+  processed_data: "data/processed/processed.parquet"
+  features_dir: "data/features/"
+  models_dir: "models/"
+  reports_dir: "reports/"
+
+# Feature Engineering Flags
+feature_flags:
+  use_technical_indicators: True
+  use_volatility_features: True
+  use_volume_features: True
+  use_time_features: True
+  use_lag_features: True
