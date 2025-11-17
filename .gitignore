@@ -64,3 +64,12 @@ models/*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Test and coverage files
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist-info/
+*.egg-info/
+.tox/
